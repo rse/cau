@@ -25,7 +25,7 @@ Installation
 
     ```
     $ curl -L -o /usr/sbin/cau \
-      https://github.com/rse/cau/releases/download/0.9.0/cau-linux-debian-x64
+      https://github.com/rse/cau/releases/download/0.9.1/cau-linux-debian-x64
     $ chmod 755 /usr/sbin/cau
     ```
 
@@ -33,7 +33,7 @@ Installation
 
     ```
     $ curl -L -o /usr/sbin/cau \
-      https://github.com/rse/cau/releases/download/0.9.0/cau-linux-alpine-x64
+      https://github.com/rse/cau/releases/download/0.9.1/cau-linux-alpine-x64
     $ chmod 755 /usr/sbin/cau
     ```
 
