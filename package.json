@@ -31,7 +31,6 @@
         "eslint-plugin-import":   "2.20.0",
         "eslint-plugin-node":     "11.0.0",
         "npm-run-all":            "4.1.5",
-        "shx":                    "0.3.2",
         "pkg":                    "4.4.2",
         "remark-cli":             "7.0.1",
         "remark":                 "11.0.2",
@@ -58,16 +57,17 @@
         "node":                   ">=10.0.0"
     },
     "scripts": {
-        "build":                  "npm-run-all -s generate:man package",
-        "prepublishOnly":         "eslint --config eslint.yaml cau.js",
-        "package":                "npm-run-all -s package:gen package:mv:debian package:mv:alpine",
-        "package:gen":            "pkg -t node12-linux-x64,node12-alpine-x64 .",
-        "package:mv:debian":      "shx mv cau-linux  cau-linux-debian-x64",
-        "package:mv:alpine":      "shx mv cau-alpine cau-linux-alpine-x64",
-        "package:clean":          "shx rm -f cau-linux-debian-x64 cau-linux-alpine-x64",
+        "prepublishOnly":         "npm-run-all -s lint",
+        "build":                  "npm-run-all -s lint generate:man package",
         "clean":                  "npm-run-all -s package:clean generate:clean",
+        "lint":                   "eslint --config eslint.yaml cau.js",
+        "package":                "npm-run-all -s package:gen package:debian package:alpine",
+        "package:gen":            "pkg -t node12-linux-x64,node12-alpine-x64 .",
+        "package:debian":         "mv cau-linux  cau && tar -c -f- cau cau.1 | xz -9 >cau-linux-debian-x64.tar.xz && rm -f cau",
+        "package:alpine":         "mv cau-alpine cau && tar -c -f- cau cau.1 | xz -9 >cau-linux-alpine-x64.tar.xz && rm -f cau",
+        "package:clean":          "rm -f cau-linux-debian-x64.tar.xz cau-linux-alpine-x64.tar.xz",
         "generate:man":           "remark --quiet --use remark-man --output cau.1 cau.md",
-        "generate:clean":         "shx rm -f cau.1"
+        "generate:clean":         "rm -f cau.1"
     },
     "pkg": {
         "assets": [
