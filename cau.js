@@ -34,6 +34,7 @@ const fs          = require("fs").promises
 const yargs       = require("yargs")
 const glob        = require("glob-promise")
 const execa       = require("execa")
+const getStream   = require("get-stream")
 const chalk       = require("chalk")
 const stripAnsi   = require("strip-ansi")
 const request     = require("request-promise-native")
@@ -134,14 +135,58 @@ const UUID        = require("pure-uuid")
             fn:        { type: String,    nullable: false, unique: true },
             validFrom: { type: String,    nullable: false },
             validTo:   { type: String,    nullable: false },
-            updated:   { type: String,    nullable: false },
             pem:       { type: String,    nullable: false },
-            source:    { type: String,    nullable: false }
+            url:       { type: String,    nullable: false },
+            updated:   { type: String,    nullable: false }
         })
     }
     const dbClose = async () => {
         if (db !== null)
             await db.close()
+    }
+
+    /*  helper function for reading input  */
+    const readInput = async (url, options = {}) => {
+        options = Object.assign({}, { encoding: "utf8" }, options)
+        let content
+        if (url === "-") {
+            /*  read from stdin  */
+            content = await getStream(process.stdin, options)
+        }
+        else if (url.match(/^(?:file:\/\/)?\/.*$/)) {
+            /*  read from file  */
+            filename = filename.replace(/^file:\/\/)/, "")
+            content = await fs.readFile(filename, options)
+        }
+        else {
+            content = await request({
+                uri:      url,
+                encoding: options.encoding,
+                headers:  { "User-Agent": `CAU/${my.version}` }
+            })
+        }
+        return content
+    }
+
+    /*  helper function for writing output  */
+    const writeOutput = async (filename, content, options = {}) => {
+        options = Object.assign({}, { encoding: "utf8" }, options)
+        if (filename === "-") {
+            /*  write to stdout  */
+            await new Promise((resolve, reject) => {
+                process.stdout.write(content, options.encoding, (err) => {
+                    if (err) reject(err)
+                    else     resolve()
+                })
+            })
+        }
+        else if (filename.match(/^(?:file:\/\/)?\/.*$/)) {
+            /*  write to file  */
+            filename = filename.replace(/^file:\/\/)/, "")
+            await fs.writeFile(filename, content, options)
+        }
+        else
+            throw new Error(`cannot write to "${filename}": invalid scheme`)
     }
 
     /*  helper function for generating output  */
@@ -164,17 +209,8 @@ const UUID        = require("pure-uuid")
         if (!dump && optsGlobal.nocolor)
             out = stripAnsi(out)
 
-        /*  write to stdout or to a file  */
-        if (optsGlobal.output === "-") {
-            await new Promise((resolve, reject) => {
-                process.stdout.write(out, (err) => {
-                    if (err) reject(err)
-                    else     resolve()
-                })
-            })
-        }
-        else
-            await fs.writeFile(optsGlobal.output, out, { flag: "a" })
+        /*  write output  */
+        return writeOutput(optsGlobal.output, out, { flag: "a" })
     }
 
     /*  define commands  */
@@ -283,7 +319,7 @@ const UUID        = require("pure-uuid")
                     const source = await dm.source.findOne({ id })
                     if (source === undefined)
                         throw new Error(`no source found with id "${id}"`)
-                    const certs = await dm.cert.find({ source: id })
+                    const certs = await dm.cert.find({ url: source.url })
                     const out = {
                         id:      source.id,
                         url:     source.url,
@@ -308,8 +344,8 @@ const UUID        = require("pure-uuid")
         /*  command: "import"  */
         async import (optsGlobal, argv) {
             /*  parse command line options  */
-            parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
-                yargs.usage("Usage: cau import")
+            const optsCmd = parseArgs(argv, {}, { min: 0, max: 1 }, (yargs) =>
+                yargs.usage("Usage: cau import [<url>]")
             )
 
             /*  open database connection  */
@@ -328,17 +364,11 @@ const UUID        = require("pure-uuid")
             /*  drop all certificiates  */
             await dm.cert.clear()
 
-            /*  iterate over all sources  */
-            for (const source of sources) {
-                /*  fetch certificate bundles from remote location  */
-                let body = await request({
-                    uri: source.url,
-                    headers: { "User-Agent": `CAU/${my.version}` }
-                })
-
+            /*  helper function for importing an entire PEM bundle  */
+            const importBundle = async (url, bundle) => {
                 /*  extract all certificate PEM entries  */
                 const pems = []
-                body = body.replace(re, (_, pem) => {
+                bundle = bundle.replace(re, (_, pem) => {
                     pem = pem.replace(/^[ \t]+/g, "").replace(/[ \t]*\r?\n/g, "\n")
                     pem = `-----BEGIN CERTIFICATE-----\n${pem}-----END CERTIFICATE-----\n`
                     pems.push(pem)
@@ -382,8 +412,25 @@ const UUID        = require("pure-uuid")
                     /*  store certificate information  */
                     const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
                     await dm.cert.create({
-                        dn, fn, validFrom, validTo, updated, pem, source: source.id
+                        dn, fn, validFrom, validTo, updated, pem, url: url
                     })
+                }
+            }
+
+            /*  dispatch according to usage  */
+            const args = optsCmd._
+            if (args.length === 1) {
+                /*  import from a single ad-hoc URL  */
+                const url = args[0]
+                let bundle = await readInput(url)
+                await importBundle(url, bundle)
+            }
+            else {
+                /*  iterate over all pre-defined sources  */
+                for (const source of sources) {
+                    /*  fetch certificate bundles from remote location  */
+                    let bundle = await readInput(source.url)
+                    await importBundle(source.url, bundle)
                 }
             }
 
@@ -484,7 +531,7 @@ const UUID        = require("pure-uuid")
                     "\n"
                 for (const cert of certs)
                     out += makePEM(cert)
-                await fs.writeFile(optsCmd.certFile, out)
+                await writeOutput(optsCmd.certFile, out)
             }
             else if (optsCmd.certDir !== "") {
                 /*
@@ -517,7 +564,7 @@ const UUID        = require("pure-uuid")
 
                     /*  generate PEM file  */
                     const pem = makePEM(cert)
-                    await fs.writeFile(`${dir}/${fn}`, pem)
+                    await writeOutput(`${dir}/${fn}`, pem)
 
                     /*  generate manifest entry  */
                     if (optsCmd.manifestFile !== "")
@@ -551,7 +598,7 @@ const UUID        = require("pure-uuid")
                         txt = txt.replace(re, block)
                     else
                         txt += block
-                    await fs.writeFile(optsCmd.manifestFile, txt)
+                    await writeOutput(optsCmd.manifestFile, txt)
                 }
 
                 /*  optionally execute post-operation shell command  */
