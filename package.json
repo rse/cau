@@ -59,13 +59,13 @@
     "scripts": {
         "build":                  "npm-run-all -s generate:man",
         "prepublishOnly":         "eslint --config eslint.yaml cau.js",
-        "package":                "npm-run-all -s package:gen package:mv:lnx package:mv:win package:mv:mac",
+        "package":                "npm-run-all -s package:gen package:mv:debian package:mv:alpine",
         "package:gen":            "pkg -t node12-linux-x64,node12-alpine-x64 .",
-        "package:mv:lnx":         "shx mv cau-linux   cau-lnx-x64",
-        "package:mv:win":         "shx mv cau-win.exe cau-win-x64.exe",
-        "package:mv:mac":         "shx mv cau-macos   cau-mac-x64",
-        "package:clean":          "shx rm -f cau-lnx-x64 cau-win-x64.exe cau-mac-x64",
-        "clean":                  "npm-run-all -s package:clean",
-        "generate:man":           "remark --quiet --use remark-man --output cau.1 cau.md"
+        "package:mv:debian":      "shx mv cau-linux  cau-linux-debian-x64",
+        "package:mv:alpine":      "shx mv cau-alpine cau-linux-alpine-x64",
+        "package:clean":          "shx rm -f cau-linux-debian-x64 cau-linux-alpine-x64",
+        "clean":                  "npm-run-all -s package:clean generate:clean",
+        "generate:man":           "remark --quiet --use remark-man --output cau.1 cau.md",
+        "generate:clean":         "shx rm -f cau.1"
     }
 }
