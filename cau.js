@@ -403,6 +403,11 @@ const UUID        = require("pure-uuid")
                     nargs:    1,
                     default:  ""
                 })
+                .option("force", {
+                    type:     "boolean",
+                    describe: "force the removal of obsolete certificates",
+                    default:  false
+                })
             )
 
             /*  open database connection  */
@@ -421,7 +426,13 @@ const UUID        = require("pure-uuid")
 
             /*  drop all certificates  */
             log(2, "drop all certificates")
-            await dm.cert.clear()
+
+            /*  remember obsolete certificates  */
+            let obsolete = {}
+            const certs = await dm.cert.find()
+            for (cert of certs)
+                obsolete[cert.dn] = true
+            let countBefore = certs.length
 
             /*  helper function for importing an entire PEM bundle  */
             const importBundle = async (url, bundle) => {
@@ -472,9 +483,10 @@ const UUID        = require("pure-uuid")
                     log(1, `store certificate: DN: ${dn}, issued: ${validFrom}, expires: ${validTo}`)
                     log(2, `store certificate: FN: ${fn}`)
                     const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
-                    await dm.cert.create({
+                    await dm.cert.updateOrCreate({ dn }, {
                         dn, fn, validFrom, validTo, updated, pem, url: url
                     })
+                    delete obsolete[dn]
                 }
             }
 
@@ -505,6 +517,15 @@ const UUID        = require("pure-uuid")
                     log(2, `PEM bundle size: ${bundle.length} bytes`)
                     await importBundle(source.url, bundle)
                 }
+            }
+
+            /*  remove obsoleted certificates  */
+            let countRemove = Object.keys(obsolete).length
+            if ((countRemove / countBefore) > 0.20 && !optsCmd.force)
+                throw new Error(`more than 20% of the certificates will be removed`)
+            for (dn of Object.keys(obsolete)) {
+                log(2, `removing obsolete certificate: DN: ${dn}`)
+                await dm.cert.remove({ dn })
             }
 
             /*  close database connection  */
