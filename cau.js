@@ -419,7 +419,7 @@ const UUID        = require("pure-uuid")
                 "-----END (?:X509 |TRUSTED )?CERTIFICATE-----(\r?\n)?",
             "g")
 
-            /*  drop all certificiates  */
+            /*  drop all certificates  */
             log(2, "drop all certificates")
             await dm.cert.clear()
 
