@@ -1,0 +1,71 @@
+{
+    "name":                       "cau",
+    "homepage":                   "http://github.com/rse/cau",
+    "description":                "Certificate Authority Utility",
+    "version":                    "0.9.0",
+    "license":                    "MIT",
+    "author": {
+        "name":                   "Dr. Ralf S. Engelschall",
+        "email":                  "rse@engelschall.com",
+        "url":                    "http://engelschall.com"
+    },
+    "keywords": [
+                                  "certificate", "authority", "bundle"
+    ],
+    "repository": {
+        "type":                   "git",
+        "url":                    "git://github.com/rse/cau.git"
+    },
+    "bugs": {
+        "url":                    "http://github.com/rse/cau/issues"
+    },
+    "bin": {
+        "cau":                    "./cau.js"
+    },
+    "devDependencies": {
+        "babel-eslint":           "10.0.3",
+        "eslint":                 "6.8.0",
+        "eslint-config-standard": "14.1.0",
+        "eslint-plugin-standard": "4.0.1",
+        "eslint-plugin-promise":  "4.2.1",
+        "eslint-plugin-import":   "2.20.0",
+        "eslint-plugin-node":     "11.0.0",
+        "npm-run-all":            "4.1.5",
+        "shx":                    "0.3.2",
+        "pkg":                    "4.4.2",
+        "remark-cli":             "7.0.1",
+        "remark":                 "11.0.2",
+        "remark-man":             "6.0.0"
+    },
+    "dependencies" : {
+        "yargs":                  "15.1.0",
+        "glob":                   "7.1.6",
+        "glob-promise":           "3.4.0",
+        "execa":                  "4.0.0",
+        "request":                "2.88.0",
+        "request-promise-native": "1.0.8",
+        "chalk":                  "3.0.0",
+        "strip-ansi":             "6.0.0",
+        "@fidm/x509":             "1.2.1",
+        "js-yaml":                "3.13.1",
+        "moment":                 "2.24.0",
+        "pure-uuid":              "1.5.8",
+        "trilogy":                "2.0.2",
+        "sql.js":                 "1.1.0"
+    },
+    "engines": {
+        "node":                   ">=8.0.0"
+    },
+    "scripts": {
+        "build":                  "npm-run-all -s generate:man",
+        "prepublishOnly":         "eslint --config eslint.yaml cau.js",
+        "package":                "npm-run-all -s package:gen package:mv:lnx package:mv:win package:mv:mac",
+        "package:gen":            "pkg -t node12-linux-x64,node12-win-x64,node12-macos-x64 .",
+        "package:mv:lnx":         "shx mv cau-linux   cau-lnx-x64",
+        "package:mv:win":         "shx mv cau-win.exe cau-win-x64.exe",
+        "package:mv:mac":         "shx mv cau-macos   cau-mac-x64",
+        "package:clean":          "shx rm -f cau-lnx-x64 cau-win-x64.exe cau-mac-x64",
+        "clean":                  "npm-run-all -s package:clean",
+        "generate:man":           "remark --quiet --use remark-man --output cau.1 cau.md"
+    }
+}
