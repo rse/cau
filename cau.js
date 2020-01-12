@@ -155,8 +155,8 @@ const UUID        = require("pure-uuid")
         }
         else if (url.match(/^(?:file:\/\/)?\/.*$/)) {
             /*  read from file  */
-            filename = filename.replace(/^file:\/\/)/, "")
-            content = await fs.readFile(filename, options)
+            url = url.replace(/^file:\/\/)/, "")
+            content = await fs.readFile(url, options)
         }
         else {
             content = await request({
@@ -438,14 +438,14 @@ const UUID        = require("pure-uuid")
             /*  dispatch according to usage  */
             if (optsCmd.certFile !== "") {
                 /*  import from a single ad-hoc file or directory  */
-                let bundle = await readInput(optsCmd.certFile)
+                const bundle = await readInput(optsCmd.certFile)
                 await importBundle(optsCmd.certFile, bundle)
             }
             else if (optsCmd.certDir !== "") {
                 /*  import from a single ad-hoc directory  */
                 const files = await glob(`${optsCmd.certDir}/*`)
                 for (const file of files) {
-                    let bundle = await readInput(file)
+                    const bundle = await readInput(file)
                     await importBundle(file, bundle)
                 }
             }
@@ -453,7 +453,7 @@ const UUID        = require("pure-uuid")
                 /*  iterate over all pre-defined sources  */
                 for (const source of sources) {
                     /*  fetch certificate bundles from remote location  */
-                    let bundle = await readInput(source.url)
+                    const bundle = await readInput(source.url)
                     await importBundle(source.url, bundle)
                 }
             }
