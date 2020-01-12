@@ -67,5 +67,10 @@
         "clean":                  "npm-run-all -s package:clean generate:clean",
         "generate:man":           "remark --quiet --use remark-man --output cau.1 cau.md",
         "generate:clean":         "shx rm -f cau.1"
+    },
+    "pkg": {
+        "assets": [
+            "node_modules/sql.js/dist/sql-wasm.wasm"
+        ]
     }
 }
