@@ -4,6 +4,7 @@
 ## SYNOPSIS
 
 `cau`
+\[`-v`|`--verbose` *level*\]
 \[`-d`|`--database-file` *file*\]
 \[`-o`|`--output-file` *file*\]
 \[`-F`|`--output-format` `json`|`yaml`\]
@@ -49,6 +50,10 @@ Key Cryptography scenarios.
 ## OPTIONS
 
 The following top-level options and arguments exist:
+
+- \[`-v`|`--verbose` *level*\]:
+  Level of verbose output. Default is 0 (no output), 1
+  is INFO level and 2 is DEBUG level.
 
 - \[`-d`|`--database-file` *file*\]:
   Path to database file. It has to be created with `cau init` before use.
