@@ -20,17 +20,19 @@ GNU/Linux system.
 Installation
 ------------
 
-- directly via pre-built Linux binary for Debian GNU/Linux (amd64):
+- directly via pre-built Linux binary for Debian GNU/Linux (x64):
 
     ```
-    $ curl -O /usr/sbin/cau https://github.com/rse/cau/
+    $ curl -LO /usr/sbin/cau \
+      https://github.com/rse/cau/releases/download/0.9.0/cau-linux-debian-x64
     $ chmod 755 /usr/sbin/cau
     ```
 
-- directly via pre-built Linux binary for Alpine GNU/Linux (amd64):
+- directly via pre-built Linux binary for Alpine GNU/Linux (x64):
 
     ```
-    $ curl -O /usr/sbin/cau https://github.com/rse/cau/
+    $ curl -LO /usr/sbin/cau \
+      https://github.com/rse/cau/releases/download/0.9.0/cau-linux-alpine-x64
     $ chmod 755 /usr/sbin/cau
     ```
 
@@ -43,8 +45,8 @@ Installation
 Usage
 -----
 
-The [Unix manual page](https://github.com/rse/cau/cau.md) contains
-detailled usage information.
+The [Unix manual page](https://github.com/rse/cau/blob/master/cau.md) contains
+detailed usage information.
 
 License
 -------
