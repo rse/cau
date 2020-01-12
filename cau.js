@@ -153,17 +153,18 @@ const UUID        = require("pure-uuid")
             /*  read from stdin  */
             content = await getStream(process.stdin, options)
         }
-        else if (url.match(/^(?:file:\/\/)?\/.*$/)) {
-            /*  read from file  */
-            url = url.replace(/^file:\/\//, "")
-            content = await fs.readFile(url, options)
-        }
-        else {
+        else if (url.match(/^https?:\/\/.+/)){
+            /*  read from URL  */
             content = await request({
                 uri:      url,
                 encoding: options.encoding,
                 headers:  { "User-Agent": `CAU/${my.version}` }
             })
+        }
+        else {
+            /*  read from file  */
+            url = url.replace(/^file:(?:\/\/)?/, "")
+            content = await fs.readFile(url, options)
         }
         return content
     }
@@ -180,13 +181,11 @@ const UUID        = require("pure-uuid")
                 })
             })
         }
-        else if (filename.match(/^(?:file:\/\/)?\/.*$/)) {
+        else {
             /*  write to file  */
-            filename = filename.replace(/^file:\/\//, "")
+            filename = filename.replace(/^file:(?:\/\/)?/, "")
             await fs.writeFile(filename, content, options)
         }
-        else
-            await fs.writeFile(filename, content, options)
     }
 
     /*  helper function for generating output  */
