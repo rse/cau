@@ -24,17 +24,15 @@ Installation
 - directly via pre-built Linux binary for Debian GNU/Linux (x64):
 
     ```
-    $ curl -L -o /usr/sbin/cau \
-      https://github.com/rse/cau/releases/download/0.9.1/cau-linux-debian-x64
-    $ chmod 755 /usr/sbin/cau
+    $ curl -L https://github.com/rse/cau/releases/download/0.9.2/cau-linux-debian-x64.tar.xz | \
+      xz -d | tar -x -f- -C /usr/sbin cau
     ```
 
 - directly via pre-built Linux binary for Alpine GNU/Linux (x64):
 
     ```
-    $ curl -L -o /usr/sbin/cau \
-      https://github.com/rse/cau/releases/download/0.9.1/cau-linux-alpine-x64
-    $ chmod 755 /usr/sbin/cau
+    $ curl -L https://github.com/rse/cau/releases/download/0.9.2/cau-linux-alpine-x64.tar.xz | \
+      xz -d | tar -x -f- -C /usr/sbin cau
     ```
 
 - via Node.js/NPM for any platform:
