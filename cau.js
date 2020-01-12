@@ -83,12 +83,20 @@ const UUID        = require("pure-uuid")
     const optsGlobal = parseArgs(argv, { "halt-at-non-option": true }, { min: 1 }, (yargs) =>
         yargs.usage(
             "Usage: cau " +
+            "[-v|--verbose <level>] " +
             "[-d|--database-file <file>] " +
             "[-o|--output-file <file>] " +
             "[-F|--output-format json|yaml] " +
             "[-C|--output-nocolor]" +
             "<command> [<options>] [<arguments>]"
         )
+        .option("v", {
+            alias:    "verbose",
+            type:     "number",
+            describe: "level of verbose output",
+            nargs:    1,
+            default:  parseInt(process.env["CAU_VERBOSE"] || "0")
+        })
         .option("d", {
             alias:    "database-file",
             type:     "string",
@@ -104,7 +112,7 @@ const UUID        = require("pure-uuid")
             default:  process.env["CAU_OUTPUT_FILE"] || "-"
         })
         .option("F", {
-            alias:    "format",
+            alias:    "output-format",
             type:     "string",
             describe: "output format (\"json\" or \"yaml\")",
             nargs:    1,
@@ -114,17 +122,35 @@ const UUID        = require("pure-uuid")
             alias:    "output-nocolor",
             type:     "boolean",
             describe: "do not use any colors in output",
-            default:  truthy(process.env["CAU_OUTPUT_NOCOLOR"]) || process.stdout.isTTY
+            default:  truthy(process.env["CAU_OUTPUT_NOCOLOR"]) || false
         })
     )
+
+    /*  helper function for verbose log output  */
+    const logLevels = [ "NONE", chalk.blue("INFO"), chalk.yellow("DEBUG") ]
+    const log = (level, msg) => {
+        if (level > 0 && level < logLevels.length && level <= optsGlobal.verbose) {
+            msg = `cau: ${chalk.blue(logLevels[level])}: ${msg}\n`
+            if (optsGlobal.outputNocolor || !process.stderr.isTTY)
+                msg = stripAnsi(msg)
+            process.stderr.write(msg)
+        }
+    }
 
     /*  database connectivity  */
     let db = null
     const dm = {}
     const dbOpen = async () => {
+        /*  sanity check situation  */
         if (optsGlobal.databaseFile === "")
             throw new Error("no database file configured (use option -f)")
+
+        /*  open database connection  */
+        log(2, `connecting to SQLite database "${optsGlobal.databaseFile}"`)
         db = trilogy.connect(optsGlobal.databaseFile, { client: "sql.js" })
+
+        /*  create database model  */
+        log(2, "establishing model of SQLite database")
         dm.source = await db.model("source", {
             id:        { type: String,    nullable: false, primary: true },
             url:       { type: String,    nullable: false },
@@ -141,20 +167,24 @@ const UUID        = require("pure-uuid")
         })
     }
     const dbClose = async () => {
-        if (db !== null)
+        if (db !== null) {
+            log(2, `disconnecting from SQLite database "${optsGlobal.databaseFile}"`)
             await db.close()
+        }
     }
 
     /*  helper function for reading input  */
     const readInput = async (url, options = {}) => {
         options = Object.assign({}, { encoding: "utf8" }, options)
         let content
-        if (url === "-") {
+        if (url === "-" || url === "stdin:") {
             /*  read from stdin  */
+            log(2, "reading from stdin")
             content = await getStream(process.stdin, options)
         }
         else if (url.match(/^https?:\/\/.+/)) {
             /*  read from URL  */
+            log(2, `reading from URL "${url}"`)
             content = await request({
                 uri:      url,
                 encoding: options.encoding,
@@ -164,6 +194,7 @@ const UUID        = require("pure-uuid")
         else {
             /*  read from file  */
             url = url.replace(/^file:(?:\/\/)?/, "")
+            log(2, `reading from file "${url}"`)
             content = await fs.readFile(url, options)
         }
         return content
@@ -172,8 +203,9 @@ const UUID        = require("pure-uuid")
     /*  helper function for writing output  */
     const writeOutput = async (filename, content, options = {}) => {
         options = Object.assign({}, { encoding: "utf8" }, options)
-        if (filename === "-") {
+        if (filename === "-" || filename === "stdout:") {
             /*  write to stdout  */
+            log(2, "writing to stdout")
             await new Promise((resolve, reject) => {
                 process.stdout.write(content, options.encoding, (err) => {
                     if (err) reject(err)
@@ -184,12 +216,13 @@ const UUID        = require("pure-uuid")
         else {
             /*  write to file  */
             filename = filename.replace(/^file:(?:\/\/)?/, "")
+            log(2, `writing to file "${filename}"`)
             await fs.writeFile(filename, content, options)
         }
     }
 
     /*  helper function for generating output  */
-    const output = async (out, dump) => {
+    const output = async (out, dump = false) => {
         /*  optionally dump object  */
         if (dump) {
             if (optsGlobal.outputFormat === "json")
@@ -222,10 +255,12 @@ const UUID        = require("pure-uuid")
             )
 
             /*  output detailed program information  */
-            process.stderr.write(`CAU ${my.version} <${my.homepage}>\n`)
-            process.stderr.write(`${my.description}\n`)
-            process.stderr.write(`Copyright (c) 2020 ${my.author.name} <${my.author.url}>\n`)
-            process.stderr.write(`Licensed under ${my.license} <http://spdx.org/licenses/${my.license}.html>\n`)
+            output(
+                chalk.blue.bold(`CAU ${my.version} <${my.homepage}>\n`) +
+                chalk.blue(`${my.description}\n`) +
+                `Copyright (c) 2020 ${my.author.name} <${my.author.url}>\n` +
+                `Licensed under ${my.license} <http://spdx.org/licenses/${my.license}.html>\n`
+            )
             return 0
         },
 
@@ -246,20 +281,20 @@ const UUID        = require("pure-uuid")
             )
 
             /*  open database connection  */
+            log(1, "initializing database")
             await dbOpen()
 
             /*  drop all content  */
+            log(2, "dropping all database content")
             await dm.source.clear()
             await dm.cert.clear()
 
             /*  optionally insert initial source  */
             if (optsCmd.standard) {
+                const url = "https://curl.haxx.se/ca/cacert.pem"
+                log(1, `adding source "standard" with URL "${url}"`)
                 const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
-                await dm.source.create({
-                    id:  "standard",
-                    url: "https://curl.haxx.se/ca/cacert.pem",
-                    updated
-                })
+                await dm.source.create({ id: "standard", url, updated })
             }
 
             /*  close database connection  */
@@ -292,6 +327,7 @@ const UUID        = require("pure-uuid")
             if (optsCmd.r) {
                 if (argv.length === 0) {
                     /*  remove all sources  */
+                    log(2, "remove all sources")
                     await dm.source.clear()
                 }
                 else if (argv.length === 1) {
@@ -300,6 +336,7 @@ const UUID        = require("pure-uuid")
                     const source = await dm.source.findOne({ id })
                     if (source === undefined)
                         throw new Error(`no source found with id "${id}"`)
+                    log(2, `remove source "${id}"`)
                     await dm.source.remove({ id })
                 }
                 else
@@ -309,12 +346,14 @@ const UUID        = require("pure-uuid")
                 if (argv.length === 2) {
                     /*  add/set single source  */
                     const [ id, url ] = argv
+                    log(2, `add/set source "${id}", "${url}"`)
                     const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
                     await dm.source.updateOrCreate({ id }, { id, url, updated })
                 }
                 else if (argv.length === 1) {
                     /*  show single source  */
                     const [ id ] = argv
+                    log(2, `read source "${id}"`)
                     const source = await dm.source.findOne({ id })
                     if (source === undefined)
                         throw new Error(`no source found with id "${id}"`)
@@ -329,6 +368,7 @@ const UUID        = require("pure-uuid")
                 }
                 else if (argv.length === 0) {
                     /*  show all sources  */
+                    log(2, "read all sources")
                     const sources = await dm.source.find({}, { order: "id" })
                     const out = sources.map((source) => source.id)
                     await output(out, true)
@@ -369,6 +409,7 @@ const UUID        = require("pure-uuid")
             await dbOpen()
 
             /*  find all sources  */
+            log(2, "read all sources")
             const sources = await dm.source.find()
 
             /*  generate PEM entry matching regular expression  */
@@ -379,6 +420,7 @@ const UUID        = require("pure-uuid")
             "g")
 
             /*  drop all certificiates  */
+            log(2, "drop all certificates")
             await dm.cert.clear()
 
             /*  helper function for importing an entire PEM bundle  */
@@ -427,6 +469,8 @@ const UUID        = require("pure-uuid")
                     const validTo   = moment(cert.validTo).format("YYYY-MM-DDTHH:mm:ss")
 
                     /*  store certificate information  */
+                    log(1, `store certificate: DN: ${dn}, issued: ${validFrom}, expires: ${validTo}`)
+                    log(2, `store certificate: FN: ${fn}`)
                     const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
                     await dm.cert.create({
                         dn, fn, validFrom, validTo, updated, pem, url: url
@@ -437,14 +481,18 @@ const UUID        = require("pure-uuid")
             /*  dispatch according to usage  */
             if (optsCmd.certFile !== "") {
                 /*  import from a single ad-hoc file or directory  */
+                log(1, `loading CA certificates from file ${optsCmd.certFile}`)
                 const bundle = await readInput(optsCmd.certFile)
+                log(2, `PEM bundle size: ${bundle.length} bytes`)
                 await importBundle(optsCmd.certFile, bundle)
             }
             else if (optsCmd.certDir !== "") {
                 /*  import from a single ad-hoc directory  */
                 const files = await glob(`${optsCmd.certDir}/*`)
                 for (const file of files) {
+                    log(1, `loading CA certificates from file ${file}`)
                     const bundle = await readInput(file)
+                    log(2, `PEM bundle size: ${bundle.length} bytes`)
                     await importBundle(file, bundle)
                 }
             }
@@ -452,7 +500,9 @@ const UUID        = require("pure-uuid")
                 /*  iterate over all pre-defined sources  */
                 for (const source of sources) {
                     /*  fetch certificate bundles from remote location  */
+                    log(1, `loading CA certificates from URL ${source.url}`)
                     const bundle = await readInput(source.url)
+                    log(2, `PEM bundle size: ${bundle.length} bytes`)
                     await importBundle(source.url, bundle)
                 }
             }
@@ -529,6 +579,7 @@ const UUID        = require("pure-uuid")
             await dbOpen()
 
             /*  find all certificates  */
+            log(2, "reading all certificates")
             const certs = await dm.cert.find({}, { order: "dn" })
 
             /*  helper function for generating a certificate PEM entry  */
@@ -554,6 +605,7 @@ const UUID        = require("pure-uuid")
                     "\n"
                 for (const cert of certs)
                     out += makePEM(cert)
+                log(1, `writing certificate PEM bundle to file "${optsCmd.certFile}"`)
                 await writeOutput(optsCmd.certFile, out)
             }
             else if (optsCmd.certDir !== "") {
@@ -565,13 +617,17 @@ const UUID        = require("pure-uuid")
                 const dir = optsCmd.certDir
                 const exists = await fs.access(dir, fsConstants.F_OK | fsConstants.W_OK)
                     .then(() => true).catch(() => false)
-                if (!exists)
+                if (!exists) {
+                    log(1, `creating directory "${optsCmd.certDir}"`)
                     await fs.mkdir(dir, { mode: 0o755, recursive: true })
+                }
 
                 /*  prune existing certificate files from output directory  */
                 const files = await glob(`${dir}/*`)
-                for (const file of files)
+                for (const file of files) {
+                    log(2, `deleting existing file "${file}"`)
                     await fs.unlink(file)
+                }
 
                 /*  iterate over all certificates  */
                 let manifest = ""
@@ -587,6 +643,7 @@ const UUID        = require("pure-uuid")
 
                     /*  generate PEM file  */
                     const pem = makePEM(cert)
+                    log(1, `writing certificate PEM to file "${dir}/${fn}"`)
                     await writeOutput(`${dir}/${fn}`, pem)
 
                     /*  generate manifest entry  */
@@ -621,6 +678,8 @@ const UUID        = require("pure-uuid")
                         txt = txt.replace(re, block)
                     else
                         txt += block
+
+                    log(1, `injecting manifest into file "${optsCmd.manifestFile}"`)
                     await writeOutput(optsCmd.manifestFile, txt)
                 }
             }
@@ -628,8 +687,10 @@ const UUID        = require("pure-uuid")
                 throw new Error("either certificate file (--cert-file) or directory (--cert-dir) required")
 
             /*  optionally execute post-export shell command  */
-            if (optsCmd.exec !== "")
+            if (optsCmd.exec !== "") {
+                log(1, `executing post-export shell command "${optsCmd.exec}"`)
                 await execa(optsCmd.exec, { stdio: "inherit", shell: true })
+            }
 
             /*  close database connection  */
             await dbClose()
