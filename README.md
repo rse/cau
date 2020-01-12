@@ -13,9 +13,10 @@ CAU
 Abstract
 --------
 
-This is a small Command-Line Interface (CLI) for managing X.509
-Certificate Authority bundles and applying them onto a Debian or Alpine
-GNU/Linux system.
+Certificate Authority Utility (CAU) is a small utility for managing the
+X.509 certificates of Certificate Authorities (CAs), which are required
+for validating certificates in the context of SSL/TLS and similar Public
+Key Cryptography scenarios.
 
 Installation
 ------------

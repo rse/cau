@@ -83,38 +83,38 @@ const UUID        = require("pure-uuid")
     const optsGlobal = parseArgs(argv, { "halt-at-non-option": true }, { min: 1 }, (yargs) =>
         yargs.usage(
             "Usage: cau " +
-            "[-f|--file <database-file>] " +
-            "[-C|--nocolor] " +
-            "[-o|--output <file>] " +
-            "[-O|--format json|yaml] " +
+            "[-d|--database-file <file>] " +
+            "[-o|--output-file <file>] " +
+            "[-F|--output-format json|yaml] " +
+            "[-C|--output-nocolor]" +
             "<command> [<options>] [<arguments>]"
         )
-        .option("f", {
-            alias:    "file",
+        .option("d", {
+            alias:    "database-file",
             type:     "string",
             describe: "package configuration to use (\"package.json\")",
             nargs:    1,
-            default:  process.env["CAU_FILE"] || ""
-        })
-        .option("C", {
-            alias:    "nocolor",
-            type:     "boolean",
-            describe: "do not use any colors in output",
-            default:  truthy(process.env["CAU_NOCOLOR"]) || process.stdout.isTTY
+            default:  process.env["CAU_DATABASE_FILE"] || ""
         })
         .option("o", {
-            alias:    "output",
+            alias:    "output-file",
             type:     "string",
             describe: "output format (\"json\" or \"yaml\")",
             nargs:    1,
-            default:  process.env["CAU_OUTPUT"] || "-"
+            default:  process.env["CAU_OUTPUT_FILE"] || "-"
         })
-        .option("O", {
+        .option("F", {
             alias:    "format",
             type:     "string",
             describe: "output format (\"json\" or \"yaml\")",
             nargs:    1,
-            default:  process.env["CAU_FORMAT"] || "yaml"
+            default:  process.env["CAU_OUTPUT_FORMAT"] || "yaml"
+        })
+        .option("C", {
+            alias:    "output-nocolor",
+            type:     "boolean",
+            describe: "do not use any colors in output",
+            default:  truthy(process.env["CAU_OUTPUT_NOCOLOR"]) || process.stdout.isTTY
         })
     )
 
@@ -122,9 +122,9 @@ const UUID        = require("pure-uuid")
     let db = null
     const dm = {}
     const dbOpen = async () => {
-        if (optsGlobal.file === "")
+        if (optsGlobal.databaseFile === "")
             throw new Error("no database file configured (use option -f)")
-        db = trilogy.connect(optsGlobal.file, { client: "sql.js" })
+        db = trilogy.connect(optsGlobal.databaseFile, { client: "sql.js" })
         dm.source = await db.model("source", {
             id:        { type: String,    nullable: false, primary: true },
             url:       { type: String,    nullable: false },
@@ -193,12 +193,12 @@ const UUID        = require("pure-uuid")
     const output = async (out, dump) => {
         /*  optionally dump object  */
         if (dump) {
-            if (optsGlobal.format === "json")
+            if (optsGlobal.outputFormat === "json")
                 out = JSON.stringify(out, null, "    ")
-            else if (optsGlobal.format === "yaml")
+            else if (optsGlobal.outputFormat === "yaml")
                 out = jsYAML.dump(out)
             else
-                throw new Error("invalid output format")
+                throw new Error(`invalid output format "${optsGlobal.outputFormat}"`)
         }
 
         /*  ensure a trailing newline  */
@@ -206,11 +206,11 @@ const UUID        = require("pure-uuid")
             out += "\n"
 
         /*  optionally remove all colors (in case of given output and no dumping)  */
-        if (!dump && optsGlobal.nocolor)
+        if (!dump && (optsGlobal.outputNocolor || optsGlobal.outputFile !== "-"))
             out = stripAnsi(out)
 
         /*  write output  */
-        return writeOutput(optsGlobal.output, out, { flag: "a" })
+        return writeOutput(optsGlobal.outputFile, out, { flag: "a" })
     }
 
     /*  define commands  */
@@ -469,13 +469,13 @@ const UUID        = require("pure-uuid")
             const optsCmd = parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
                 yargs.usage(
                     "Usage: cau export " +
-                    "[-f|--cert-file -|<file>|<url>] " +
+                    "[-f|--cert-file -|<file>] " +
                     "[-d|--cert-dir <dir>] " +
                     "[-n|--cert-filenames uuid|dn] " +
-                    "[-m|--manifest-file <manifest-file>] " +
+                    "[-m|--manifest-file <file>] " +
                     "[--manifest-dn] " +
-                    "[-m|--manifest-prefix <manifest-prefix>] " +
-                    "[-e|--exec <shell-command>]"
+                    "[-m|--manifest-prefix <prefix>] " +
+                    "[-e|--exec <command>]"
                 )
                 .option("cert-file", {
                     alias:    "f",
@@ -491,7 +491,7 @@ const UUID        = require("pure-uuid")
                     nargs:    1,
                     default:  ""
                 })
-                .option("cert-filenames", {
+                .option("cert-names", {
                     alias:    "n",
                     type:     "string",
                     describe: "type of certificate filenames (\"uuid\" or \"dn\")",
@@ -624,13 +624,13 @@ const UUID        = require("pure-uuid")
                         txt += block
                     await writeOutput(optsCmd.manifestFile, txt)
                 }
-
-                /*  optionally execute post-operation shell command  */
-                if (optsCmd.exec !== "")
-                    await execa(optsCmd.exec, { stdio: "inherit", shell: true })
             }
             else
                 throw new Error("either certificate file (--cert-file) or directory (--cert-dir) required")
+
+            /*  optionally execute post-export shell command  */
+            if (optsCmd.exec !== "")
+                await execa(optsCmd.exec, { stdio: "inherit", shell: true })
 
             /*  close database connection  */
             await dbClose()
