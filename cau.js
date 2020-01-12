@@ -345,7 +345,25 @@ const UUID        = require("pure-uuid")
         async import (optsGlobal, argv) {
             /*  parse command line options  */
             const optsCmd = parseArgs(argv, {}, { min: 0, max: 1 }, (yargs) =>
-                yargs.usage("Usage: cau import [<url>]")
+                yargs.usage(
+                    "Usage: cau import " +
+                    "[-f|--cert-file -|<file>|<url>] " +
+                    "[-d|--cert-dir <dir>]"
+                )
+                .option("cert-file", {
+                    alias:    "f",
+                    type:     "string",
+                    describe: "bundle file for reading certificates",
+                    nargs:    1,
+                    default:  ""
+                })
+                .option("cert-dir", {
+                    alias:    "d",
+                    type:     "string",
+                    describe: "directory for reading certificates",
+                    nargs:    1,
+                    default:  ""
+                })
             )
 
             /*  open database connection  */
@@ -418,12 +436,18 @@ const UUID        = require("pure-uuid")
             }
 
             /*  dispatch according to usage  */
-            const args = optsCmd._
-            if (args.length === 1) {
-                /*  import from a single ad-hoc URL  */
-                const url = args[0]
-                let bundle = await readInput(url)
-                await importBundle(url, bundle)
+            if (optsCmd.certFile !== "") {
+                /*  import from a single ad-hoc file or directory  */
+                let bundle = await readInput(optsCmd.certFile)
+                await importBundle(optsCmd.certFile, bundle)
+            }
+            else if (optsCmd.certDir !== "") {
+                /*  import from a single ad-hoc directory  */
+                const files = await glob(`${optsCmd.certDir}/*`)
+                for (const file of files) {
+                    let bundle = await readInput(file)
+                    await importBundle(file, bundle)
+                }
             }
             else {
                 /*  iterate over all pre-defined sources  */
@@ -445,8 +469,8 @@ const UUID        = require("pure-uuid")
             const optsCmd = parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
                 yargs.usage(
                     "Usage: cau export " +
-                    "[-f|--cert-file <certificate-file>] " +
-                    "[-d|--cert-dir <certificate-dir>] " +
+                    "[-f|--cert-file -|<file>|<url>] " +
+                    "[-d|--cert-dir <dir>] " +
                     "[-n|--cert-filenames uuid|dn] " +
                     "[-m|--manifest-file <manifest-file>] " +
                     "[--manifest-dn] " +

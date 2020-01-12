@@ -26,16 +26,18 @@
 
 `cau`
 `import`
+\[`-f`|`--cert-file` `-`|*file*|*url*\]
+\[`-d`|`--cert-dir` *dir**\]
 
 `cau`
 `export`
-\[`-f`|`--cert-file` *certificate-file*\]
-\[`-d`|`--cert-dir` *certificate-dir*\]
-\[`-n`|`--cert-filenames` `uuid`|`dn`\]
-\[`-m`|`--manifest-file` *manifest-file*\]
+\[`-f`|`--cert-file` `-`|*file*\]
+\[`-d`|`--cert-dir` *dir*\]
+\[`-n`|`--cert-names` `uuid`|`dn`\]
+\[`-m`|`--manifest-file` *file*\]
 \[`--manifest-dn`\]
-\[`-p`|`--manifest-prefix` *manifest-prefix*\]
-\[`-e`|`--exec` *shell-command*\]
+\[`-p`|`--manifest-prefix` *prefix*\]
+\[`-e`|`--exec` *command*\]
 
 ## DESCRIPTION
 
