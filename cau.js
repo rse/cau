@@ -155,7 +155,7 @@ const UUID        = require("pure-uuid")
         }
         else if (url.match(/^(?:file:\/\/)?\/.*$/)) {
             /*  read from file  */
-            url = url.replace(/^file:\/\/)/, "")
+            url = url.replace(/^file:\/\//, "")
             content = await fs.readFile(url, options)
         }
         else {
@@ -182,11 +182,11 @@ const UUID        = require("pure-uuid")
         }
         else if (filename.match(/^(?:file:\/\/)?\/.*$/)) {
             /*  write to file  */
-            filename = filename.replace(/^file:\/\/)/, "")
+            filename = filename.replace(/^file:\/\//, "")
             await fs.writeFile(filename, content, options)
         }
         else
-            throw new Error(`cannot write to "${filename}": invalid scheme`)
+            await fs.writeFile(filename, content, options)
     }
 
     /*  helper function for generating output  */
