@@ -4,12 +4,41 @@ CAU
 
 **Certificate Authority Utility**
 
+<p/>
+<img src="https://nodei.co/npm/cau.png?downloads=true&stars=true" alt=""/>
+
+<p/>
+<img src="https://david-dm.org/rse/cau.png" alt=""/>
+
 Abstract
 --------
 
 This is a small Command-Line Interface (CLI) for managing X.509
 Certificate Authority bundles and applying them onto a Debian or Alpine
 GNU/Linux system.
+
+Installation
+------------
+
+- directly via pre-built Linux binary for Debian GNU/Linux (amd64):
+
+    ```
+    $ curl -O /usr/sbin/cau https://github.com/rse/cau/
+    $ chmod 755 /usr/sbin/cau
+    ```
+
+- directly via pre-built Linux binary for Alpine GNU/Linux (amd64):
+
+    ```
+    $ curl -O /usr/sbin/cau https://github.com/rse/cau/
+    $ chmod 755 /usr/sbin/cau
+    ```
+
+- via Node.js/NPM for any platform:
+
+    ```
+    $ npm install -g cau
+    ```
 
 Usage
 -----
