@@ -54,7 +54,7 @@
         "sql.js":                 "1.1.0"
     },
     "engines": {
-        "node":                   ">=8.0.0"
+        "node":                   ">=10.0.0"
     },
     "scripts": {
         "build":                  "npm-run-all -s generate:man",
