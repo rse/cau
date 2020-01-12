@@ -161,9 +161,9 @@ the *Debian* and/or *Alpine* GNU/Linux system with the help of their
 cau import
 
 cau export --cert-file - | \
-    docker exec -i example cau import --cert-file -
+    docker exec -i example cau -d /var/run/cau.db import --cert-file -
 
-docker exec -i example cau export \
+docker exec -i example cau -d /var/run/cau.db export \
     --cert-dir /usr/share/ca-certificates/cau \
     --cert-names uuid \
     --manifest-file /etc/ca-certificates.conf \
