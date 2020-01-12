@@ -428,11 +428,11 @@ const UUID        = require("pure-uuid")
             log(2, "drop all certificates")
 
             /*  remember obsolete certificates  */
-            let obsolete = {}
+            const obsolete = {}
             const certs = await dm.cert.find()
-            for (cert of certs)
+            for (const cert of certs)
                 obsolete[cert.dn] = true
-            let countBefore = certs.length
+            const countBefore = certs.length
 
             /*  helper function for importing an entire PEM bundle  */
             const importBundle = async (url, bundle) => {
@@ -520,10 +520,10 @@ const UUID        = require("pure-uuid")
             }
 
             /*  remove obsoleted certificates  */
-            let countRemove = Object.keys(obsolete).length
+            const countRemove = Object.keys(obsolete).length
             if ((countRemove / countBefore) > 0.20 && !optsCmd.force)
-                throw new Error(`more than 20% of the certificates will be removed`)
-            for (dn of Object.keys(obsolete)) {
+                throw new Error("more than 20% of the certificates will be removed")
+            for (const dn of Object.keys(obsolete)) {
                 log(2, `removing obsolete certificate: DN: ${dn}`)
                 await dm.cert.remove({ dn })
             }
