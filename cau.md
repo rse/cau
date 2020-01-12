@@ -144,8 +144,7 @@ Authority (CA) certificates in various *Docker* containers. For this the
 ```
 cau init --standard
 
-cau source msgcloud http://example.com/msgcloud.cer
-cau source zscaler  http://example.com/zscaler.crt
+cau source mycloud  http://my.example.com/cloud.cer
 cau source local    file:///app/etc/ca-example.pem
 
 cau import
