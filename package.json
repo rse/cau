@@ -60,7 +60,7 @@
         "build":                  "npm-run-all -s generate:man",
         "prepublishOnly":         "eslint --config eslint.yaml cau.js",
         "package":                "npm-run-all -s package:gen package:mv:lnx package:mv:win package:mv:mac",
-        "package:gen":            "pkg -t node12-linux-x64,node12-win-x64,node12-macos-x64 .",
+        "package:gen":            "pkg -t node12-linux-x64,node12-alpine-x64 .",
         "package:mv:lnx":         "shx mv cau-linux   cau-lnx-x64",
         "package:mv:win":         "shx mv cau-win.exe cau-win-x64.exe",
         "package:mv:mac":         "shx mv cau-macos   cau-mac-x64",

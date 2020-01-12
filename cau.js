@@ -29,7 +29,6 @@ const my          = require("./package.json")
 /*  internal requirements  */
 const fsConstants = require("fs").constants
 const fs          = require("fs").promises
-const url         = require("url")
 
 /*  external requirements  */
 const yargs       = require("yargs")
@@ -46,6 +45,7 @@ const UUID        = require("pure-uuid")
 
 ;(async () => {
     /*  helper function for parsing command-line options  */
+    /* eslint indent: off */
     const parseArgs = (argv, config, args, handler) => {
         let obj = yargs()
             .parserConfiguration(Object.assign({}, {
@@ -61,7 +61,7 @@ const UUID        = require("pure-uuid")
             .showHelpOnFail(true)
             .strict(true)
         obj = handler(obj)
-        let options = obj.parse(argv)
+        const options = obj.parse(argv)
         delete options.$0
         if (typeof args.min === "number" && options._.length < args.min)
             throw new Error(`too less arguments (at least ${args.min} expected)`)
@@ -72,14 +72,14 @@ const UUID        = require("pure-uuid")
 
     /*  helper function for checking "truthy"  */
     const truthy = (value) => (
-        (typeof value === "boolean" && value) ||
-        (typeof value === "number" && value) ||
-        (typeof value === "string" && value.match(/^(?:on|yes|true)$/i))
+        (typeof value === "boolean" && value)
+        || (typeof value === "number" && value)
+        || (typeof value === "string" && value.match(/^(?:on|yes|true)$/i))
     )
 
     /*  parse global command-line options  */
     let argv = process.argv.slice(2)
-    let optsGlobal = parseArgs(argv, { "halt-at-non-option": true }, { min: 1 }, (yargs) =>
+    const optsGlobal = parseArgs(argv, { "halt-at-non-option": true }, { min: 1 }, (yargs) =>
         yargs.usage(
             "Usage: cau " +
             "[-f|--file <database-file>] " +
@@ -119,7 +119,7 @@ const UUID        = require("pure-uuid")
 
     /*  database connectivity  */
     let db = null
-    let dm = {}
+    const dm = {}
     const dbOpen = async () => {
         if (optsGlobal.file === "")
             throw new Error("no database file configured (use option -f)")
@@ -182,7 +182,7 @@ const UUID        = require("pure-uuid")
         /*  command: "version"  */
         async version (optsGlobal, argv) {
             /*  parse command line options  */
-            const optsCmd = parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
+            parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
                 yargs.usage("Usage: cau version")
             )
 
@@ -219,7 +219,7 @@ const UUID        = require("pure-uuid")
 
             /*  optionally insert initial source  */
             if (optsCmd.standard) {
-                let updated = moment().format("YYYY-MM-DDTHH:mm:ss")
+                const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
                 await dm.source.create({
                     id:  "standard",
                     url: "https://curl.haxx.se/ca/cacert.pem",
@@ -261,8 +261,8 @@ const UUID        = require("pure-uuid")
                 }
                 else if (argv.length === 1) {
                     /*  remove single source  */
-                    let [ id ] = argv
-                    let source = await dm.source.findOne({ id })
+                    const [ id ] = argv
+                    const source = await dm.source.findOne({ id })
                     if (source === undefined)
                         throw new Error(`no source found with id "${id}"`)
                     await dm.source.remove({ id })
@@ -273,18 +273,18 @@ const UUID        = require("pure-uuid")
             else {
                 if (argv.length === 2) {
                     /*  add/set single source  */
-                    let [ id, url ] = argv
-                    let updated = moment().format("YYYY-MM-DDTHH:mm:ss")
+                    const [ id, url ] = argv
+                    const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
                     await dm.source.updateOrCreate({ id }, { id, url, updated })
                 }
                 else if (argv.length === 1) {
                     /*  show single source  */
-                    let [ id ] = argv
-                    let source = await dm.source.findOne({ id })
+                    const [ id ] = argv
+                    const source = await dm.source.findOne({ id })
                     if (source === undefined)
                         throw new Error(`no source found with id "${id}"`)
-                    let certs = await dm.cert.find({ source: id })
-                    let out = {
+                    const certs = await dm.cert.find({ source: id })
+                    const out = {
                         id:      source.id,
                         url:     source.url,
                         updated: source.updated,
@@ -294,8 +294,8 @@ const UUID        = require("pure-uuid")
                 }
                 else if (argv.length === 0) {
                     /*  show all sources  */
-                    let sources = await dm.source.find({}, { order: "id" })
-                    let out = sources.map((source) => source.id)
+                    const sources = await dm.source.find({}, { order: "id" })
+                    const out = sources.map((source) => source.id)
                     await output(out, true)
                 }
             }
@@ -308,7 +308,7 @@ const UUID        = require("pure-uuid")
         /*  command: "import"  */
         async import (optsGlobal, argv) {
             /*  parse command line options  */
-            const optsCmd = parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
+            parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
                 yargs.usage("Usage: cau import")
             )
 
@@ -316,10 +316,10 @@ const UUID        = require("pure-uuid")
             await dbOpen()
 
             /*  find all sources  */
-            let sources = await dm.source.find()
+            const sources = await dm.source.find()
 
             /*  generate PEM entry matching regular expression  */
-            let re = new RegExp("(?:.|\r?\n)*?" +
+            const re = new RegExp("(?:.|\r?\n)*?" +
                 "-----BEGIN (?:X509 |TRUSTED )?CERTIFICATE-----\r?\n" +
                 "((?:.|\r?\n)+?)" +
                 "-----END (?:X509 |TRUSTED )?CERTIFICATE-----(\r?\n)?",
@@ -329,7 +329,7 @@ const UUID        = require("pure-uuid")
             await dm.cert.clear()
 
             /*  iterate over all sources  */
-            for (source of sources) {
+            for (const source of sources) {
                 /*  fetch certificate bundles from remote location  */
                 let body = await request({
                     uri: source.url,
@@ -337,7 +337,7 @@ const UUID        = require("pure-uuid")
                 })
 
                 /*  extract all certificate PEM entries  */
-                let pems = []
+                const pems = []
                 body = body.replace(re, (_, pem) => {
                     pem = pem.replace(/^[ \t]+/g, "").replace(/[ \t]*\r?\n/g, "\n")
                     pem = `-----BEGIN CERTIFICATE-----\n${pem}-----END CERTIFICATE-----\n`
@@ -346,7 +346,7 @@ const UUID        = require("pure-uuid")
                 })
 
                 /*  mapping of X.509 distinguished name segments and API attributes  */
-                let DN = [
+                const DN = [
                     { sn: "CN", ln: "commonName" },
                     { sn: "OU", ln: "organizationalUnitName" },
                     { sn: "O",  ln: "organizationName" },
@@ -355,14 +355,14 @@ const UUID        = require("pure-uuid")
                 ]
 
                 /*  iterate over all PEM entries  */
-                for (pem of pems) {
+                for (const pem of pems) {
                     /*  parse PEM entry  */
-                    let cert = x509.Certificate.fromPEM(pem)
+                    const cert = x509.Certificate.fromPEM(pem)
 
                     /*  determine distinguished name and filename  */
                     let dn = ""
                     let fn = ""
-                    let sub = cert.subject
+                    const sub = cert.subject
                     DN.forEach((entry) => {
                         if (typeof sub[entry.ln] === "string" && sub[entry.ln] !== "") {
                             if (dn !== "")
@@ -376,11 +376,11 @@ const UUID        = require("pure-uuid")
                     fn = fn.replace(/--+/g, "-").replace(/^-/, "").replace(/-$/, "")
 
                     /*  determine certificate validity range  */
-                    let validFrom = moment(cert.validFrom).format("YYYY-MM-DDTHH:mm:ss")
-                    let validTo   = moment(cert.validTo).format("YYYY-MM-DDTHH:mm:ss")
+                    const validFrom = moment(cert.validFrom).format("YYYY-MM-DDTHH:mm:ss")
+                    const validTo   = moment(cert.validTo).format("YYYY-MM-DDTHH:mm:ss")
 
                     /*  store certificate information  */
-                    let updated   = moment().format("YYYY-MM-DDTHH:mm:ss")
+                    const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
                     await dm.cert.create({
                         dn, fn, validFrom, validTo, updated, pem, source: source.id
                     })
@@ -400,6 +400,11 @@ const UUID        = require("pure-uuid")
                     "Usage: cau export " +
                     "[-f|--cert-file <certificate-file>] " +
                     "[-d|--cert-dir <certificate-dir>] " +
+                    "[-n|--cert-filenames uuid|dn] " +
+                    "[-m|--manifest-file <manifest-file>] " +
+                    "[--manifest-dn] " +
+                    "[-m|--manifest-prefix <manifest-prefix>] " +
+                    "[-e|--exec <shell-command>]"
                 )
                 .option("cert-file", {
                     alias:    "f",
@@ -454,14 +459,14 @@ const UUID        = require("pure-uuid")
             await dbOpen()
 
             /*  find all certificates  */
-            let certs = await dm.cert.find({}, { order: "dn" })
+            const certs = await dm.cert.find({}, { order: "dn" })
 
             /*  helper function for generating a certificate PEM entry  */
             const makePEM = (cert) =>
                 `#   DN:      ${cert.dn}\n` +
                 `#   Issued:  ${cert.validFrom}\n` +
                 `#   Expires: ${cert.validTo}\n` +
-                `\n` +
+                "\n" +
                 `${cert.pem}\n`
 
             /*  dispatch according to output format  */
@@ -470,14 +475,14 @@ const UUID        = require("pure-uuid")
                  *  ==== generate certificate (bundle) file ====
                  */
 
-                let generated = moment().format("YYYY-MM-DDTHH:mm:ss")
+                const generated = moment().format("YYYY-MM-DDTHH:mm:ss")
                 let out =
                     "##\n" +
                     "##  Certificate Authority Certificate Bundle\n" +
                     `##  (certificates: ${certs.length}, generated: ${generated})\n` +
                     "##\n" +
                     "\n"
-                for (cert of certs)
+                for (const cert of certs)
                     out += makePEM(cert)
                 await fs.writeFile(optsCmd.certFile, out)
             }
@@ -487,20 +492,20 @@ const UUID        = require("pure-uuid")
                  */
 
                 /*  ensure output directory exists  */
-                let dir = optsCmd.certDir
-                let exists = await fs.access(dir, fsConstants.F_OK|fsConstants.W_OK)
+                const dir = optsCmd.certDir
+                const exists = await fs.access(dir, fsConstants.F_OK | fsConstants.W_OK)
                     .then(() => true).catch(() => false)
                 if (!exists)
                     await fs.mkdir(dir, { mode: 0o755, recursive: true })
 
                 /*  prune existing certificate files from output directory  */
-                let files = await glob(`${dir}/*`)
-                for (file of files)
+                const files = await glob(`${dir}/*`)
+                for (const file of files)
                     await fs.unlink(file)
 
                 /*  iterate over all certificates  */
                 let manifest = ""
-                for (cert of certs) {
+                for (const cert of certs) {
                     /*  determine filename  */
                     let fn
                     if (optsCmd.certFilenames === "dn")
@@ -511,7 +516,7 @@ const UUID        = require("pure-uuid")
                         throw new Error("invalid certificate filenames type")
 
                     /*  generate PEM file  */
-                    let pem = makePEM(cert)
+                    const pem = makePEM(cert)
                     await fs.writeFile(`${dir}/${fn}`, pem)
 
                     /*  generate manifest entry  */
@@ -529,7 +534,8 @@ const UUID        = require("pure-uuid")
 
                     /*  optionally read existing manifest  */
                     let txt = ""
-                    let exists = await fs.access(optsCmd.manifestFile, fsConstants.F_OK|fsConstants.R_OK|fsConstants.W_OK)
+                    const exists = await fs.access(optsCmd.manifestFile,
+                        fsConstants.F_OK | fsConstants.R_OK | fsConstants.W_OK)
                         .then(() => true).catch(() => false)
                     if (exists)
                         txt = await fs.readFile(optsCmd.manifestFile, { encoding: "utf8" })
@@ -564,12 +570,11 @@ const UUID        = require("pure-uuid")
     /*  dispatch command  */
     argv = optsGlobal._
     delete optsGlobal._
-    let cmd = argv.shift()
+    const cmd = argv.shift()
     if (typeof commands[cmd] !== "function")
         throw new Error(`unknown command: "${cmd}"`)
-    let rc = await commands[cmd](optsGlobal, argv)
+    const rc = await commands[cmd](optsGlobal, argv)
     process.exit(rc)
-
 })().catch((err) => {
     /*  fatal error  */
     process.stderr.write(`cau: ${chalk.red("ERROR:")} ${err.message}\n`)
