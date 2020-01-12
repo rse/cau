@@ -153,7 +153,7 @@ const UUID        = require("pure-uuid")
             /*  read from stdin  */
             content = await getStream(process.stdin, options)
         }
-        else if (url.match(/^https?:\/\/.+/)){
+        else if (url.match(/^https?:\/\/.+/)) {
             /*  read from URL  */
             content = await request({
                 uri:      url,
