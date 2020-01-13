@@ -22,7 +22,8 @@
 ##  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ##
 
-NPM = npm
+SHELL = bash
+NPM   = npm
 
 all: build
 
@@ -36,4 +37,40 @@ build: bootstrap
 clean: bootstrap
 
 distclean: bootstrap
+
+VERSION_NODE        = 12
+VERSION_NODE_ALPINE = $(VERSION_NODE)-alpine
+VERSION_NODE_DEBIAN = $(VERSION_NODE)-buster
+VERSION_PKG_ALPINE  = node$(VERSION_NODE)-alpine-x64
+VERSION_PKG_DEBIAN  = node$(VERSION_NODE)-linux-x64
+
+USR                 = $$(id -u -n)
+UID                 = $$(id -u)
+GRP                 = $$(id -g -n)
+GID                 = $$(id -g)
+
+package: package-alpine package-debian
+
+package-alpine:
+	@echo "(executing under Alpine GNU/Linux)" && \
+	docker run -it --rm -v $$HOME:$$HOME -e TERM -e HOME --name pkg-alpine node:$(VERSION_NODE_ALPINE) \
+		sh -c "apk -q update && \
+	        apk -q add --no-progress bash sudo shadow && \
+	        groupadd -g $(GID) $(GRP) && \
+            useradd -M -d $$HOME -s /bin/bash -u $(UID) -g $(GID) -G wheel $(USR) && \
+	        echo 'Set disable_coredump false' >>/etc/sudo.conf && \
+	        cd $$PWD && \
+	        sudo -u $(USR) -g $(GRP) npx pkg -t $(VERSION_PKG_ALPINE) ." && \
+	tar -c -f- cau cau.1 | xz -9 >cau-linux-alpine-x64.tar.xz && rm -f cau
+
+package-debian:
+	@echo "(executing under Debian GNU/Linux)" && \
+	docker run -it --rm -v $$HOME:$$HOME -e TERM -e HOME --name pkg-debian node:$(VERSION_NODE_DEBIAN) \
+		sh -c "apt-get -q update -q && \
+	        apt-get -q install -q -y bash sudo >/dev/null 2>&1 && \
+	        groupadd -g $(GID) $(GRP) && \
+            useradd -M -d $$HOME -s /bin/bash -u $(UID) -g $(GID) -G root $(USR) && \
+	        cd $$PWD && \
+	        sudo -u $(USR) -g $(GRP) npx pkg -t $(VERSION_PKG_DEBIAN) ." && \
+	tar -c -f- cau cau.1 | xz -9 >cau-linux-debian-x64.tar.xz && rm -f cau
 
