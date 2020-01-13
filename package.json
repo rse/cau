@@ -2,7 +2,7 @@
     "name":                       "cau",
     "homepage":                   "http://github.com/rse/cau",
     "description":                "Certificate Authority Utility",
-    "version":                    "0.9.2",
+    "version":                    "0.9.3",
     "license":                    "MIT",
     "author": {
         "name":                   "Dr. Ralf S. Engelschall",
