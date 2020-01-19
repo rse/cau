@@ -722,9 +722,9 @@ const UUID        = require("pure-uuid")
                 }
 
                 /*  the manifest block prolog/epilog  */
-                let file = optsCmd.manifestFile
-                let tmpfile1 = "/tmp/cau.$$.1.tmp"
-                let tmpfile2 = "/tmp/cau.$$.2.tmp"
+                const file = optsCmd.manifestFile
+                const tmpfile1 = "/tmp/cau.$$.1.tmp"
+                const tmpfile2 = "/tmp/cau.$$.2.tmp"
                 out +=
                     "\n" +
                     "#   create manifest block\n" +
