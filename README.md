@@ -24,14 +24,14 @@ Installation
 - directly via pre-built Linux binary for Debian GNU/Linux (x64):
 
     ```
-    $ curl -L https://github.com/rse/cau/releases/download/0.9.3/cau-linux-debian-x64.tar.xz | \
+    $ curl -L https://github.com/rse/cau/releases/download/0.9.4/cau-linux-debian-x64.tar.xz | \
       xz -d | tar -x -f- -C /usr/sbin cau
     ```
 
 - directly via pre-built Linux binary for Alpine GNU/Linux (x64):
 
     ```
-    $ curl -L https://github.com/rse/cau/releases/download/0.9.3/cau-linux-alpine-x64.tar.xz | \
+    $ curl -L https://github.com/rse/cau/releases/download/0.9.4/cau-linux-alpine-x64.tar.xz | \
       xz -d | tar -x -f- -C /usr/sbin cau
     ```
 
