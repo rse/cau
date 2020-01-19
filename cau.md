@@ -32,6 +32,7 @@
 
 `cau`
 `export`
+\[`-s`|`--script-file` `-`|*file*\]
 \[`-f`|`--cert-file` `-`|*file*\]
 \[`-d`|`--cert-dir` *dir*\]
 \[`-n`|`--cert-names` `uuid`|`dn`\]
@@ -131,6 +132,23 @@ The following commands and their options and arguments exist:
   certificate DN (`--manifest-dn`). After generating the certificate
   files, an optional shell command can be executed (`--exec`).
 
+- `cau export` \[`-s`|`--script-file` *file*\]
+  \[`-d`|`--cert-dir` *dir*\]
+  \[`-n`|`--cert-names` `uuid`|`dn`\]
+  \[`-m`|`--manifest-file` *file*\]
+  \[`--manifest-dn`\]
+  \[`-p`|`--manifest-prefix` *prefix*\]
+  \[`-e`|`--exec` *command*\]:
+  Create a shell script which is intended to be remotely executed on the
+  target system in order to export all CA certificates as individual PEM
+  files to a (pruned) directory (`--cert-dir`). The PEM files use either
+  the certificate DNs as their filenames or UUIDs generated from the DNs
+  (`--cert-names`). A manifest can be written (`--manifest-file`) which
+  lists all generated files. The manifest entries can have a common
+  prefix (`--manifest-prefix`) and can have a leading comment line with
+  the certificate DN (`--manifest-dn`). After generating the certificate
+  files, an optional shell command can be executed (`--exec`).
+
 ## ENVIRONMENT
 
 The following environment variables are honored:
@@ -147,12 +165,12 @@ Authority (CA) certificates in various *Docker* containers. For this the
 *Docker* host imports all necessary CA certificate with:
 
 ```
-cau init --standard
+cau -d cau.db init --standard
 
-cau source mycloud  http://my.example.com/cloud.cer
-cau source local    file:///app/etc/ca-example.pem
+cau -d cau.db source mycloud  http://my.example.com/cloud.cer
+cau -d cau.db source local    file:///app/etc/ca-example.pem
 
-cau import
+cau -d cau.db import
 ```
 
 The *Docker* host then regularly (usually via a `cron`(8) job)
@@ -162,21 +180,38 @@ the *Debian* and/or *Alpine* GNU/Linux system with the help of their
 `update-ca-certificates`(8) command:
 
 ```
-cau import
+cau -d cau.db import
 
-cau export --cert-file - | \
+cau -d cau.db export --cert-file - | \
     docker exec -i example cau -d /var/run/cau.db import --cert-file -
 
 docker exec -i example cau -d /var/run/cau.db export \
     --cert-dir /usr/share/ca-certificates/cau \
     --cert-names uuid \
     --manifest-file /etc/ca-certificates.conf \
-    --manifest-prefix cau- \
+    --manifest-prefix cau/ \
     --exec update-ca-certificates
 ```
 
 The only pre-requisite is that the `cau`(1) command is available both on
 the *Docker* host and inside each *Docker* container.
+
+As an alternative, and in order to avoid having `cau`(1) available in
+the *Docker* container, a shell script can be generated on the *Docker*
+host and just executed in the *Docker* container:
+
+```
+cau -d cau.db import
+
+cau -d cau.db export \
+    --script-file - \
+    --cert-dir /usr/share/ca-certificates/cau \
+    --cert-names uuid \
+    --manifest-file /etc/ca-certificates.conf \
+    --manifest-prefix cau/ \
+    --exec update-ca-certificates | \
+    docker exec -i example sh
+```
 
 As a result, the *Docker* containers at any time have all necessary CA
 certificates at hand and can correctly validate their SSL/TLS-based

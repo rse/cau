@@ -539,14 +539,22 @@ const UUID        = require("pure-uuid")
             const optsCmd = parseArgs(argv, {}, { min: 0, max: 0 }, (yargs) =>
                 yargs.usage(
                     "Usage: cau export " +
+                    "[-s|--script-file -|<file>] " +
                     "[-f|--cert-file -|<file>] " +
                     "[-d|--cert-dir <dir>] " +
-                    "[-n|--cert-filenames uuid|dn] " +
+                    "[-n|--cert-names uuid|dn] " +
                     "[-m|--manifest-file <file>] " +
                     "[--manifest-dn] " +
                     "[-m|--manifest-prefix <prefix>] " +
                     "[-e|--exec <command>]"
                 )
+                .option("script-file", {
+                    alias:    "s",
+                    type:     "string",
+                    describe: "shell script file for performing system update",
+                    nargs:    1,
+                    default:  ""
+                })
                 .option("cert-file", {
                     alias:    "f",
                     type:     "string",
@@ -605,11 +613,13 @@ const UUID        = require("pure-uuid")
 
             /*  helper function for generating a certificate PEM entry  */
             const makePEM = (cert) =>
+                "\n" +
                 `#   DN:      ${cert.dn}\n` +
                 `#   Issued:  ${cert.validFrom}\n` +
                 `#   Expires: ${cert.validTo}\n` +
                 "\n" +
-                `${cert.pem}\n`
+                cert.pem +
+                "\n"
 
             /*  dispatch according to output format  */
             if (optsCmd.certFile !== "") {
@@ -628,6 +638,139 @@ const UUID        = require("pure-uuid")
                     out += makePEM(cert)
                 log(1, `writing certificate PEM bundle to file "${optsCmd.certFile}"`)
                 await writeOutput(optsCmd.certFile, out)
+
+                /*  optionally execute post-export shell command  */
+                if (optsCmd.exec !== "") {
+                    log(1, `executing post-export shell command "${optsCmd.exec}"`)
+                    await execa(optsCmd.exec, { stdio: "inherit", shell: true })
+                }
+            }
+            else if (optsCmd.scriptFile !== "") {
+                /*
+                 *  ==== generate shell script ====
+                 */
+
+                /*  sanity check usage  */
+                if (optsCmd.certDir === "")
+                    throw new Error("--script-file required --cert-dir")
+                if (optsCmd.manifestFile === "")
+                    throw new Error("--script-file required --manifest-file")
+
+                /*  start generating shell script  */
+                const generated = moment().format("YYYY-MM-DDTHH:mm:ss")
+                let out =
+                    "#!/bin/sh\n" +
+                    "##\n" +
+                    "##  Certificate Authority Certificate Update Script\n" +
+                    `##  (certificates: ${certs.length}, generated: ${generated})\n` +
+                    "##\n" +
+                    "\n"
+
+                /*  ensure a sane execution environment  */
+                out +=
+                    "#   ensure a sane environment\n" +
+                    "HOME=\"/\"\n" +
+                    "PATH=\"/bin:/usr/bin:/sbin:/usr/sbin:$PATH\"\n" +
+                    "umask 022\n" +
+                    "\n"
+
+                /*  ensure output directory exists  */
+                const dir = optsCmd.certDir
+                out +=
+                    "#   ensure output directory exists\n" +
+                    `if [ ! -d "${dir}" ]; then\n` +
+                    `    echo "cau: creating CA certificate directory \\"${dir}\\""\n` +
+                    `    mkdir -p -m 0755 "${dir}"\n` +
+                    "fi\n" +
+                    "\n"
+
+                /*  prune existing certificate files from output directory  */
+                out +=
+                    "#   prune existing certificate files from output directory\n" +
+                    `for file in ${dir}/*; do\n` +
+                    "    echo \"cau: deleting old CA certificate PEM file \\\"$file\\\"\"\n" +
+                    "    rm -f \"$file\"\n" +
+                    "done\n" +
+                    "\n"
+
+                /*  iterate over all certificates  */
+                out +=
+                    "#   create CA certificate files\n"
+                let manifest = ""
+                for (const cert of certs) {
+                    /*  determine filename  */
+                    let fn
+                    if (optsCmd.certNames === "dn")
+                        fn = cert.dn
+                    else if (optsCmd.certNames === "uuid")
+                        fn = (new UUID(5, "ns:URL", cert.dn)).format("std")
+                    else
+                        throw new Error("invalid certificate filenames type")
+
+                    /*  generate PEM file  */
+                    const pem = makePEM(cert)
+                    out +=
+                        `echo "cau: creating new CA certificate PEM file \\"${dir}/${fn}\\""\n` +
+                        `cat <<EOT >"${dir}/${fn}"\n` +
+                        pem +
+                        "EOT\n"
+
+                    /*  generate manifest entry  */
+                    manifest +=
+                        (optsCmd.manifestDn ? `# DN: ${cert.dn}\n` : "") +
+                        `${optsCmd.manifestPrefix}${fn}\n`
+                }
+
+                /*  the manifest block prolog/epilog  */
+                let file = optsCmd.manifestFile
+                let tmpfile1 = "/tmp/cau.$$.1.tmp"
+                let tmpfile2 = "/tmp/cau.$$.2.tmp"
+                out +=
+                    "\n" +
+                    "#   create manifest block\n" +
+                    `cat >${tmpfile1} <<EOT\n` +
+                    manifest +
+                    "EOT\n" +
+                    "\n" +
+                    "#   update manifest\n" +
+                    `echo "cau: injecting manifest into file \\"${file}\\""\n` +
+                    `if [ ! -f "${file}" ]; then\n` +
+                    `    cp /dev/null "${file}"\n` +
+                    "fi\n" +
+                    "tagOpen=\"# -----BEGIN CAU CERTIFICATE MANIFEST-----\"\n" +
+                    "tagClose=\"# -----END CAU CERTIFICATE MANIFEST-----\"\n" +
+                    `if ! grep "$tagOpen" "${file}" >/dev/null; then\n` +
+                    "    #   append block to virgin manifest file\n" +
+                    "    (   echo \"$tagOpen\"\n" +
+                    `        cat "${tmpfile1}"\n` +
+                    "        echo \"$tagClose\"\n" +
+                    `    ) >>"${file}"\n` +
+                    "else\n" +
+                    "    #   replace block in existing manifest file\n" +
+                    `    (   sed -e "/$tagOpen/,\\$d" "${file}"\n` +
+                    "        echo \"$tagOpen\"\n" +
+                    `        cat "${tmpfile1}"\n` +
+                    "        echo \"$tagClose\"\n" +
+                    `        sed -e "1,/$tagClose/d" "${file}"\n` +
+                    `    ) >"${tmpfile2}"\n` +
+                    `    cp "${tmpfile2}" "${file}"\n` +
+                    `    rm -f "${tmpfile2}"\n` +
+                    "fi\n" +
+                    "\n" +
+                    "#   delete manifest block\n" +
+                    `rm -f "${tmpfile1}"\n` +
+                    "\n"
+
+                /*  optionally execute post-export shell command  */
+                if (optsCmd.exec !== "")
+                    out +=
+                        "#   executing post-export shell command\n" +
+                        `echo "cau: executing post-export shell command \\"${optsCmd.exec}\\""\n` +
+                        optsCmd.exec + "\n" +
+                        "\n"
+
+                log(1, `writing certificate system update script to file "${optsCmd.scriptFile}"`)
+                await writeOutput(optsCmd.scriptFile, out)
             }
             else if (optsCmd.certDir !== "") {
                 /*
@@ -655,9 +798,9 @@ const UUID        = require("pure-uuid")
                 for (const cert of certs) {
                     /*  determine filename  */
                     let fn
-                    if (optsCmd.certFilenames === "dn")
+                    if (optsCmd.certNames === "dn")
                         fn = cert.dn
-                    else if (optsCmd.certFilenames === "uuid")
+                    else if (optsCmd.certNames === "uuid")
                         fn = (new UUID(5, "ns:URL", cert.dn)).format("std")
                     else
                         throw new Error("invalid certificate filenames type")
@@ -703,15 +846,15 @@ const UUID        = require("pure-uuid")
                     log(1, `injecting manifest into file "${optsCmd.manifestFile}"`)
                     await writeOutput(optsCmd.manifestFile, txt)
                 }
+
+                /*  optionally execute post-export shell command  */
+                if (optsCmd.exec !== "") {
+                    log(1, `executing post-export shell command "${optsCmd.exec}"`)
+                    await execa(optsCmd.exec, { stdio: "inherit", shell: true })
+                }
             }
             else
                 throw new Error("either certificate file (--cert-file) or directory (--cert-dir) required")
-
-            /*  optionally execute post-export shell command  */
-            if (optsCmd.exec !== "") {
-                log(1, `executing post-export shell command "${optsCmd.exec}"`)
-                await execa(optsCmd.exec, { stdio: "inherit", shell: true })
-            }
 
             /*  close database connection  */
             await dbClose()
