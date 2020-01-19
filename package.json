@@ -61,10 +61,7 @@
         "build":                  "npm-run-all -s lint generate:man package",
         "clean":                  "npm-run-all -s package:clean generate:clean",
         "lint":                   "eslint --config eslint.yaml cau.js",
-        "package":                "npm-run-all -s package:gen package:debian package:alpine",
-        "package:gen":            "pkg -t node12-linux-x64,node12-alpine-x64 .",
-        "package:debian":         "mv cau-linux  cau && tar -c -f- cau cau.1 | xz -9 >cau-linux-debian-x64.tar.xz && rm -f cau",
-        "package:alpine":         "mv cau-alpine cau && tar -c -f- cau cau.1 | xz -9 >cau-linux-alpine-x64.tar.xz && rm -f cau",
+        "package":                "make package",
         "package:clean":          "rm -f cau-linux-debian-x64.tar.xz cau-linux-alpine-x64.tar.xz",
         "generate:man":           "remark --quiet --use remark-man --output cau.1 cau.md",
         "generate:clean":         "rm -f cau.1"
