@@ -220,7 +220,7 @@ network connections.
 ## HISTORY
 
 The `cau`(1) utility was developed in January 2020 for being able
-to easily manage standand and custom Certificate Authority (CA)
+to easily manage standard and custom Certificate Authority (CA)
 certificates in various already installed *Docker* containers.
 
 ## AUTHOR
