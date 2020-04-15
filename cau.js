@@ -522,7 +522,7 @@ const UUID        = require("pure-uuid")
             /*  remove obsoleted certificates  */
             const countRemove = Object.keys(obsolete).length
             if ((countRemove / countBefore) > 0.20 && !optsCmd.force)
-                throw new Error("more than 20% of the certificates will be removed")
+                throw new Error("more than 20% of the certificates would be removed")
             for (const dn of Object.keys(obsolete)) {
                 log(2, `removing obsolete certificate: DN: ${dn}`)
                 await dm.cert.remove({ dn })
