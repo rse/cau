@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*!
 **  CAU -- Certificate Authority Utility
-**  Copyright (c) 2020-2021 Dr. Ralf S. Engelschall <rse@engelschall.com>
+**  Copyright (c) 2020-2022 Dr. Ralf S. Engelschall <rse@engelschall.com>
 **
 **  Permission is hereby granted, free of charge, to any person obtaining
 **  a copy of this software and associated documentation files (the
@@ -258,7 +258,7 @@ const UUID        = require("pure-uuid")
             output(
                 chalk.blue.bold(`CAU ${my.version} <${my.homepage}>\n`) +
                 chalk.blue(`${my.description}\n`) +
-                `Copyright (c) 2020 ${my.author.name} <${my.author.url}>\n` +
+                `Copyright (c) 2020-2022 ${my.author.name} <${my.author.url}>\n` +
                 `Licensed under ${my.license} <http://spdx.org/licenses/${my.license}.html>\n`
             )
             return 0
