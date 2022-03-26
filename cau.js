@@ -484,7 +484,7 @@ const UUID        = require("pure-uuid")
                     log(2, `store certificate: FN: ${fn}`)
                     const updated = moment().format("YYYY-MM-DDTHH:mm:ss")
                     await dm.cert.updateOrCreate({ dn }, {
-                        dn, fn, validFrom, validTo, updated, pem, url: url
+                        dn, fn, validFrom, validTo, updated, pem, url
                     })
                     delete obsolete[dn]
                 }
